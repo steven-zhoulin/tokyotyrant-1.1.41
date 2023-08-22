@@ -75,7 +75,7 @@ const char *ttversion = _TT_VERSION;
 // add by steven start
 void init_acl_list(char *acl_file) {
     printf("Access control file: %s\n", acl_file);
-    printf("-----------------------------------------------------------\n");
+    printf("-------------------------------------------------------------\n");
     FILE *file;
     char line[1025];
 
@@ -93,7 +93,7 @@ void init_acl_list(char *acl_file) {
     }
 
     fclose(file);
-    printf("-----------------------------------------------------------\n");
+    printf("-------------------------------------------------------------\n");
 }
 
 bool acl_check(char *ip) {
