@@ -123,7 +123,6 @@ int ttopenservsockunix(const char *path);
    `NULL', it is not used.
    The return value is the file descriptor of the stream, or -1 on error. */
 //int ttacceptsock(int fd, char *addr, int *pp);
-int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp);
 
 
 /* Accept a UNIX domain connection from a client.
@@ -359,6 +358,7 @@ enum {                                   /* enumeration for logging levels */
   TTLOGSYSTEM                            /* system */
 };
 
+int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp);
 
 /* Create a server object.
    The return value is the server object. */
