@@ -561,7 +561,6 @@ int ttacceptsock(int fd, char *addr, int *pp){
             time(&timep);
             close(cfd);
             ttservlog(serv, TTLOGSYSTEM, "deny illegal access from %s", peerip);
-            //ttservlog(serv, TTLOGSYSTEM, "deny illegal access from %s | %s", peerip, asctime(gmtime(&timep)));
             //return -1;
         }
     } else {
