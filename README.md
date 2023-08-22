@@ -1,39 +1,67 @@
 # tokyotyrant-1.1.41
 
-#### 介绍
+### 介绍
 在官方 tokyotyrant-1.1.41 基础上：
-* 增加 ipv6 支持。
-* 增加 acl 黑名单支持。
+* 增加对 ipv4 / ipv6 双栈支持。
+* 增加对原地址的白名单支持。
 
-#### 软件架构
-软件架构说明
+### 安装教程
 
+```shell
+# 安装依赖
+yum install zlib-devel bzip2-devel
 
-#### 安装教程
+# 创建组
+groupadd tokyo
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+# 创建用户
+useradd -d /home/tt -g tokyo tt
 
-#### 使用说明
+# 创建目录
+su - tt
+mkdir bin data etc logs support temp tools
+```
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+安装 tokyocabinet
+```shell
+tar -zxvf tokyocabinet-1.4.48.tar.gz
+cd tokyocabinet-1.4.48
+./configure --prefix=/home/tt/support/tc
+make
+make install
+```
 
-#### 参与贡献
+安装 tokyotyrant
+```shell
+git clone https://gitee.com/steven-zhoulin/tokyotyrant-1.1.41.git
+./configure --prefix=/home/tt/support/tt --with-tc=/home/tt/support/tc
+make
+make install
+```
 
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+启动脚本
+```shell
+#!/bin/sh
 
+export TC_HOME=${HOME}/support/tc
+export TT_HOME=${HOME}/support/tt
 
-#### 特技
+${TT_HOME}/bin/ttserver -host 0.0.0.0 -port 11211 -thnum 8 -dmn -pid $HOME/logs/ttserver.pid -log $HOME/logs/ttserver.log -le -ulog $HOME/logs -ulim 128m -sid 1 -rts $HOME/logs/ttserver.rts $HOME/data/database.tch
+```
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+停止脚本
+```shell
+#!/bin/sh
+
+kill `cat ~/logs/ttserver.pid` && echo "shutdown success!"
+```
+
+### 使用说明
+
+简单验证
+```shell
+[tt@c7-n1 ~]$ curl -XPUT http://127.0.0.1:11211/k1 -d "v1"
+Created
+[tt@c7-n1 ~]$ curl -XGET http://127.0.0.1:11211/k1
+v1
+```
