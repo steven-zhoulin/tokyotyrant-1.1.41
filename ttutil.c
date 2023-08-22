@@ -62,6 +62,7 @@ static void parse_address_ipv6(char *ip, ipv6addr addr);
 
 static bool acl_check_ipv4(char *ip);
 static bool acl_check_ipv6(char *ip);
+static char *ipv6toipv4(char *ipv6);
 
 static void display(struct acl_node aclNode);
 static void assertTrue(char *addr);
@@ -96,11 +97,12 @@ void init_acl_list(char *acl_file) {
 }
 
 bool acl_check(char *ip) {
-    char *pos = strstr(ip, ":");
+    char *addr = ipv6toipv4(ip);
+    char *pos = strstr(addr, ":");
     if (NULL == pos) {
-        return acl_check_ipv4(ip);
+        return acl_check_ipv4(addr);
     } else {
-        return acl_check_ipv6(ip);
+        return acl_check_ipv6(addr);
     }
 }
 
@@ -343,6 +345,23 @@ static char *trim(char *line) {
     return NULL;
 }
 
+static char *ipv6toipv4(char *ipv6) {
+    char *start = ipv6;
+    if (0 == strncmp(start, "::ffff:", 7)) {
+        start += 7;
+        int count = 0;
+        int len = strlen(start);
+        int i;
+        for (i = 0; i < len; i++) {
+            if ('.' == start[i]) count++;
+        }
+        if (3 == count) {
+            return start;
+        }
+    }
+    return ipv6;
+}
+
 static int expand(const char *input, char *output) {
     struct in6_addr ipv6_addr;
 
@@ -556,6 +575,7 @@ int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp){
                     &clientaddr.sin6_addr,
                     peerip,
                     sizeof(peerip));
+
         if (ACL_ENABLE && !acl_check(peerip)) {
             time_t timep;
             time(&timep);
