@@ -50,7 +50,6 @@ int ACL_NODES_TAIL = 0;
 int ACL_ENABLE = 0;
 typedef long ipv6addr[2];
 
-int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp);
 static char *trim(char *line);
 static int expand(const char *input, char *output);
 static struct acl_node parse_acl_node(char *line);

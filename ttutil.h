@@ -122,7 +122,8 @@ int ttopenservsockunix(const char *path);
    `pp' specifies the pointer to a variable to which the client port is assigned.  If it is
    `NULL', it is not used.
    The return value is the file descriptor of the stream, or -1 on error. */
-int ttacceptsock(int fd, char *addr, int *pp);
+//int ttacceptsock(int fd, char *addr, int *pp);
+int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp);
 
 
 /* Accept a UNIX domain connection from a client.
