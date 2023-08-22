@@ -16,7 +16,7 @@
 
 #include "ttutil.h"
 #include "myconf.h"
-
+#include <netinet/in.h>
 
 
 /*************************************************************************************************
@@ -86,13 +86,14 @@ bool ttgethostaddr(const char *name, char *addr){
 /* Open a client socket of TCP/IP stream to a server. */
 int ttopensock(const char *addr, int port){
   assert(addr && port >= 0);
-  struct sockaddr_in sain;
+  struct sockaddr_in6 sain;
   memset(&sain, 0, sizeof(sain));
-  sain.sin_family = AF_INET;
-  if(inet_aton(addr, &sain.sin_addr) == 0) return -1;
+  sain.sin6_family = AF_INET6;
+  sain.sin6_addr = in6addr_any;
+  //if(inet_aton(addr, &sain.sin6_addr) == 0) return -1;
   uint16_t snum = port;
-  sain.sin_port = htons(snum);
-  int fd = socket(PF_INET, SOCK_STREAM, 0);
+  sain.sin6_port = htons(snum);
+  int fd = socket(AF_INET6, SOCK_STREAM, 0);
   if(fd == -1) return -1;
   int optint = 1;
   setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *)&optint, sizeof(optint));
@@ -158,13 +159,14 @@ int ttopensockunix(const char *path){
 /* Open a server socket of TCP/IP stream to clients. */
 int ttopenservsock(const char *addr, int port){
   assert(port >= 0);
-  struct sockaddr_in sain;
+  struct sockaddr_in6 sain;
   memset(&sain, 0, sizeof(sain));
-  sain.sin_family = AF_INET;
-  if(inet_aton(addr ? addr : "0.0.0.0", &sain.sin_addr) == 0) return -1;
+  sain.sin6_family = AF_INET6;
+  sain.sin6_addr = in6addr_any;
+  //if(inet_aton(addr ? addr : "0.0.0.0", &sain.sin6_addr) == 0) return -1;
   uint16_t snum = port;
-  sain.sin_port = htons(snum);
-  int fd = socket(PF_INET, SOCK_STREAM, 0);
+  sain.sin6_port = htons(snum);
+  int fd = socket(AF_INET6, SOCK_STREAM, 0);
   if(fd == -1) return -1;
   int optint = 1;
   if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&optint, sizeof(optint)) != 0){
