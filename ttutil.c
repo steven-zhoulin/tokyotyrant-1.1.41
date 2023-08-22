@@ -539,11 +539,36 @@ int ttopenservsockunix(const char *path){
 int ttacceptsock(int fd, char *addr, int *pp){
   assert(fd >= 0);
   do {
-    struct sockaddr_in sain;
+    struct sockaddr_in6 sain;
     memset(&sain, 0, sizeof(sain));
-    sain.sin_family = AF_INET;
+    sain.sin6_family = AF_INET6;
     socklen_t slen = sizeof(sain);
     int cfd = accept(fd, (struct sockaddr *)&sain, &slen);
+
+    // add by steven@2020-09-12
+    struct sockaddr_in6 clientaddr;
+    memset(&clientaddr, 0x00, sizeof(clientaddr));
+    socklen_t nl = sizeof(clientaddr);
+    int ret = getpeername(cfd, (struct sockaddr*)&clientaddr, &nl);
+    if (ret == 0) {
+        char peerip[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6,
+                    &clientaddr.sin6_addr,
+                    peerip,
+                    sizeof(peerip));
+        if (ACL_ENABLE && !acl_check(peerip)) {
+            time_t timep;
+            time(&timep);
+            close(cfd);
+            ttservlog(serv, TTLOGSYSTEM, "deny illegal access from %s", peerip);
+            //ttservlog(serv, TTLOGSYSTEM, "deny illegal access from %s | %s", peerip, asctime(gmtime(&timep)));
+            //return -1;
+        }
+    } else {
+        perror("getpeername");
+        memset(&clientaddr, 0, sizeof(clientaddr));
+    }
+
     if(cfd >= 0){
       int optint = 1;
       setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *)&optint, sizeof(optint));
