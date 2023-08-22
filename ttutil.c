@@ -50,6 +50,7 @@ int ACL_NODES_TAIL = 0;
 int ACL_ENABLE = 0;
 typedef long ipv6addr[2];
 
+int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp);
 static char *trim(char *line);
 static int expand(const char *input, char *output);
 static struct acl_node parse_acl_node(char *line);
@@ -536,7 +537,7 @@ int ttopenservsockunix(const char *path){
 
 
 /* Accept a TCP/IP connection from a client. */
-int ttacceptsock(int fd, char *addr, int *pp){
+int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp){
   assert(fd >= 0);
   do {
     struct sockaddr_in6 sain;
@@ -1396,7 +1397,7 @@ bool ttservstart(TTSERV *serv){
             sprintf(addr, "(unix)");
             port = 0;
           } else {
-            cfd = ttacceptsock(lfd, addr, &port);
+            cfd = ttacceptsock(serv,lfd, addr, &port);
           }
           if(epoll_reassoc(epfd, lfd) != 0){
             if(cfd != -1) close(cfd);
