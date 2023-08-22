@@ -585,7 +585,7 @@ int ttacceptsock(TTSERV *serv, int fd, char *addr, int *pp){
         if(getnameinfo((struct sockaddr *)&sain, sizeof(sain), addr, TTADDRBUFSIZ,
                        NULL, 0, NI_NUMERICHOST) != 0) sprintf(addr, "0.0.0.0");
       }
-      if(pp) *pp = (int)ntohs(sain.sin_port);
+      if(pp) *pp = (int)ntohs(sain.sin6_port);
       return cfd;
     }
   } while(errno == EINTR || errno == EAGAIN);
