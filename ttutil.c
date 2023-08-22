@@ -18,6 +18,14 @@
 #include "myconf.h"
 #include <netinet/in.h>
 
+// add by steven start
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+// add by steven end
 
 /*************************************************************************************************
  * basic utilities
@@ -33,9 +41,335 @@
 #define HTTPBODYMAXSIZ (256*1024*1024)   // maximum size of the entity body of HTTP
 #define TRILLIONNUM    1000000000000     // trillion number
 
+/**
+ * access control list. add by steven.zhoulin@2023-08-22
+ */
+// add by steven start
+struct acl_node ACL_NODES[10000];
+int ACL_NODES_TAIL = 0;
+int ACL_ENABLE = 0;
+typedef long ipv6addr[2];
+
+static char *trim(char *line);
+static int expand(const char *input, char *output);
+static struct acl_node parse_acl_node(char *line);
+
+static int  parse_mask_ipv4(int mask);
+static long parse_mask_ipv6(long mask);
+
+static long parse_address_ipv4(char *ip);
+static void parse_address_ipv6(char *ip, ipv6addr addr);
+
+static bool acl_check_ipv4(char *ip);
+static bool acl_check_ipv6(char *ip);
+
+static void display(struct acl_node aclNode);
+static void assertTrue(char *addr);
+// add by steven end
+
 
 /* String containing the version information. */
 const char *ttversion = _TT_VERSION;
+
+// add by steven start
+void init_acl_list(char *acl_file) {
+    printf("Access control file: %s\n", acl_file);
+    printf("-----------------------------------------------------------\n");
+    FILE *file;
+    char line[1025];
+
+    if (NULL == (file = fopen(acl_file, "r"))) {
+        printf("fopen error!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (fgets(line, sizeof line, file)) {
+        char *p = trim(line);
+        if (NULL != p) {
+            struct acl_node aclNode = parse_acl_node(p);
+            ACL_NODES[ACL_NODES_TAIL++] = aclNode;
+        }
+    }
+
+    fclose(file);
+    printf("-----------------------------------------------------------\n");
+}
+
+bool acl_check(char *ip) {
+    char *pos = strstr(ip, ":");
+    if (NULL == pos) {
+        return acl_check_ipv4(ip);
+    } else {
+        return acl_check_ipv6(ip);
+    }
+}
+
+static void assertTrue(char *addr) {
+    if (acl_check(addr)) {
+        fprintf(stdout, "[ true] %s\n", addr);
+    } else {
+        fprintf(stderr, "[false] %s\n", addr);
+    }
+}
+
+static long parse_mask_ipv6(long mask) {
+    long rtn = 0;
+    long i;
+    for (i = 63; i >= (64 - mask); i--) {
+        rtn += (0x1l << i);
+    }
+    return rtn;
+}
+
+static int parse_mask_ipv4(int mask) {
+    int rtn = 0;
+    int i;
+    for (i = 31; i >= (32 - mask); i--) {
+        rtn += (0x1 << i);
+    }
+    return rtn;
+}
+
+static void display(struct acl_node aclNode) {
+    if (aclNode.ipv6) {
+        printf("ipv6 rule: ");
+        int i;
+        for (i = 63; i >= 0; i--) {
+            printf("%c", (aclNode.high & 0x01l << i) ? '1' : '0');
+            if (i % 16 == 0) printf(" ");
+        }
+
+        int k;
+        for (k = 63; k >= 0; k--) {
+            printf("%c", (aclNode.low & 0x01l << k) ? '1' : '0');
+            if (k % 16 == 0) printf(" ");
+        }
+        printf(" mask_len: %ld", aclNode.high_len + aclNode.low_len);
+    } else {
+        printf("ipv4 rule: ");
+        int i;
+        for (i = 31; i >= 0; i--) {
+            printf("%c", (aclNode.low & 0x01 << i) ? '1' : '0');
+            if (i % 8 == 0) printf(" ");
+        }
+        printf(" mask_len: %ld", aclNode.low_len);
+    }
+    printf("\n");
+}
+
+static long parse_address_ipv4(char *ip) {
+    char buff[INET_ADDRSTRLEN];
+    long rtn = 0;
+    strcpy(buff, ip);
+    char *result = strtok(buff, ".");
+    while (NULL != result) {
+        int i = atoi(result);
+        rtn = (rtn << 8) + i;
+        result = strtok(NULL, ".");
+    }
+    return rtn;
+}
+
+static void parse_address_ipv6(char *ip, ipv6addr addr) {
+    char buff[INET6_ADDRSTRLEN];
+    expand(ip, buff);
+    char *result = strtok(buff, ":");
+    int count = 0;
+    while (NULL != result && count < 4) {
+        count++;
+        unsigned int i = 0;
+        sscanf(result, "%x", &i);
+        addr[0] = (addr[0] << 16) + i;
+        result = strtok(NULL, ":");
+    }
+
+    while (NULL != result) {
+        unsigned int i = 0;
+        sscanf(result, "%x", &i);
+        addr[1] = (addr[1] << 16) + i;
+        result = strtok(NULL, ":");
+    }
+}
+
+static bool acl_check_ipv4(char *ip) {
+    long addr = parse_address_ipv4(ip);
+
+    int i;
+    for (i = 0; i < ACL_NODES_TAIL; i++) {
+        if (ACL_NODES[i].ipv6) {
+            continue;
+        }
+        int k;
+        int len = 32 - ACL_NODES[i].low_len;
+        for (k = 31; k >= len; k--) {
+            if (((0x1 << k) & ACL_NODES[i].low) != ((0x1 << k) & addr)) {
+                break;
+            }
+        }
+
+        if (k == (len - 1)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static bool acl_check_ipv6(char *ip) {
+    ipv6addr addr = {0l, 0l};
+    parse_address_ipv6(ip, addr);
+    int i;
+    for (i = 0; i < ACL_NODES_TAIL; i++) {
+        if (!ACL_NODES[i].ipv6) {
+            continue;
+        }
+        long high_k = 63;
+        long low_k = 63;
+        long high_len = 64 - ACL_NODES[i].high_len;
+        long low_len = 64 - ACL_NODES[i].low_len;
+
+        while (high_k >= high_len) {
+            if (((0x1l << high_k) & ACL_NODES[i].high) != ((0x1l << high_k) & addr[0])) {
+                break;
+            }
+            high_k--;
+        }
+
+        while (low_k >= low_len) {
+            if (((0x1l << low_k) & ACL_NODES[i].low) != ((0x1l << low_k) & addr[1])) {
+                break;
+            }
+            low_k--;
+        }
+
+        if (high_k == (high_len - 1) && low_k == (low_len - 1)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static struct acl_node parse_acl_node_ipv4(char *line) {
+    char *addr = strtok(line, "/");
+    char *mask = strtok(NULL, "/");
+
+    if (NULL == mask) {
+        mask = "32";
+    }
+
+    long net = 0;
+    char *p = strtok(addr, ".");
+    while (NULL != p) {
+        net = (net << 8) + atoi(p);
+        p = strtok(NULL, ".");
+    }
+
+    int maskLen = atoi(mask);
+    net = net & parse_mask_ipv4(maskLen);
+
+    struct acl_node aclNode;
+    aclNode.ipv6 = false;
+    aclNode.low = net;
+    aclNode.low_len = atoi(mask);
+
+    display(aclNode);
+    return aclNode;
+}
+
+static struct acl_node parse_acl_node_ipv6(char *line) {
+    char *addr = strtok(line, "/");
+    char *mask = strtok(NULL, "/");
+    if (NULL == mask) {
+        mask = "128";
+    }
+    long high = 0;
+    long low = 0;
+    char expand_addr[INET6_ADDRSTRLEN];
+
+    expand(addr, expand_addr);
+    char *p = strtok(expand_addr, ":");
+
+    int count = 0;
+    while (NULL != p && count < 4) {
+        count++;
+        unsigned int i = 0;
+        sscanf(p, "%x", &i);
+        high = (high << 16) + i;
+        p = strtok(NULL, ":");
+    }
+
+    while (NULL != p) {
+        unsigned int i = 0;
+        sscanf(p, "%x", &i);
+        low = (low << 16) + i;
+        p = strtok(NULL, ":");
+    }
+
+    struct acl_node aclNode;
+    long len = atoi(mask);
+
+    aclNode.ipv6 = true;
+    aclNode.high_len = (64 - len) <= 0 ? 64 : 64 - len;
+    aclNode.low_len  = (len - 64) <= 0 ?  0 : len - 64;
+    aclNode.high = high & parse_mask_ipv6(aclNode.high_len);
+    aclNode.low  =  low & parse_mask_ipv6(aclNode.low_len);
+
+    display(aclNode);
+    return aclNode;
+}
+
+static struct acl_node parse_acl_node(char *line) {
+    char *pos = strstr(line, ":");
+    if (NULL == pos) {
+        return parse_acl_node_ipv4(line);
+    } else {
+        return parse_acl_node_ipv6(line);
+    }
+}
+
+static char *trim(char *line) {
+    char *start = line;
+    char *end = start + strlen(line) - 1;
+    while (*start && isspace(*start)) start++;
+    while (end > start && isspace(*end)) *end-- = '\0';
+    line[strcspn(line, "\n")] = '\0';
+    if (strlen(start)) {
+        if (start[0] == '#') {
+            return NULL;
+        }
+        return start;
+    }
+    return NULL;
+}
+
+static int expand(const char *input, char *output) {
+    struct in6_addr ipv6_addr;
+
+    // 将IPv6地址转换为二进制格式
+    if (inet_pton(AF_INET6, input, &ipv6_addr) <= 0) {
+        printf("Error ipv6 addr: %s\n", input);
+        return -1;
+    }
+
+    // 将IPv6地址展开为字符串
+    char expanded_ipv6_str[INET6_ADDRSTRLEN];
+    memset(expanded_ipv6_str, 0, sizeof(expanded_ipv6_str));
+    sprintf(expanded_ipv6_str, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+            ntohs(ipv6_addr.s6_addr[0])  >> 8, ntohs(ipv6_addr.s6_addr[1])  >> 8,
+            ntohs(ipv6_addr.s6_addr[2])  >> 8, ntohs(ipv6_addr.s6_addr[3])  >> 8,
+            ntohs(ipv6_addr.s6_addr[4])  >> 8, ntohs(ipv6_addr.s6_addr[5])  >> 8,
+            ntohs(ipv6_addr.s6_addr[6])  >> 8, ntohs(ipv6_addr.s6_addr[7])  >> 8,
+            ntohs(ipv6_addr.s6_addr[8])  >> 8, ntohs(ipv6_addr.s6_addr[9])  >> 8,
+            ntohs(ipv6_addr.s6_addr[10]) >> 8, ntohs(ipv6_addr.s6_addr[11]) >> 8,
+            ntohs(ipv6_addr.s6_addr[12]) >> 8, ntohs(ipv6_addr.s6_addr[13]) >> 8,
+            ntohs(ipv6_addr.s6_addr[14]) >> 8, ntohs(ipv6_addr.s6_addr[15]) >> 8);
+
+    // 将展开后的IPv6地址拷贝到输出缓冲区
+    strcpy(output, expanded_ipv6_str);
+    return 0;
+}
+// add by steven end
 
 
 /* Get the primary name of the local host. */

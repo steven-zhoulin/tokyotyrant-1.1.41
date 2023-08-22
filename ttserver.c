@@ -201,6 +201,7 @@ static void do_http_delete(TTSOCK *sock, TASKARG *arg, TTREQ *req, int ver, cons
 static void do_http_options(TTSOCK *sock, TASKARG *arg, TTREQ *req, int ver, const char *uri);
 static void do_term(void *opq);
 
+int ACL_ENABLE = 0;
 
 /* main routine */
 int main(int argc, char **argv){
@@ -228,6 +229,8 @@ int main(int argc, char **argv){
   int ropts = 0;
   int mulnum = 0;
   uint64_t mask = 0;
+  char *acl_file = NULL;
+
   for(int i = 1; i < argc; i++){
     if(!dbname && argv[i][0] == '-'){
       if(!strcmp(argv[i], "-host")){
@@ -304,6 +307,9 @@ int main(int argc, char **argv){
                ttversion, _TT_LIBVER, _TT_PROTVER, TTSYSNAME);
         printf("Copyright (C) 2006-2010 FAL Labs\n");
         exit(0);
+      } else if(!strcmp(argv[i], "-Z")) {
+          if(++i >=argc) usage();
+          acl_file = argv[i];
       } else {
         usage();
       }
@@ -313,6 +319,12 @@ int main(int argc, char **argv){
       usage();
     }
   }
+
+  if (acl_file != NULL) {
+      ACL_ENABLE = 1;
+      init_acl_list(acl_file);
+  }
+
   if(!dbname) dbname = "*";
   if(thnum < 1 || mport < 1) usage();
   if(dmn && !pidpath) pidpath = DEFPIDPATH;
@@ -335,7 +347,7 @@ static void usage(void){
   fprintf(stderr, "  %s [-host name] [-port num] [-thnum num] [-tout num]"
           " [-dmn] [-pid path] [-kl] [-log path] [-ld|-le] [-ulog path] [-ulim num] [-uas]"
           " [-sid num] [-mhost name] [-mport num] [-rts path] [-rcc] [-skel name] [-mul num]"
-          " [-ext path] [-extpc name period] [-mask expr] [-unmask expr] [dbname]\n",
+          " [-ext path] [-extpc name period] [-mask expr] [-unmask expr] [-Z acl_file] [dbname]\n",
           g_progname);
   fprintf(stderr, "\n");
   exit(1);

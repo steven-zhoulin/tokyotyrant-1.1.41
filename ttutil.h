@@ -55,6 +55,19 @@ typedef struct {                         /* type of structure for a socket */
   double dl;                             /* deadline time */
 } TTSOCK;
 
+/**
+ * access control list (add by steven.zhoulin@2023-08-22)
+ */
+struct acl_node {
+    bool ipv6;
+    long high;
+    long low;
+    long high_len;
+    long low_len;
+};
+
+void init_acl_list(char *acl_file);
+bool acl_check(char *ip);
 
 /* String containing the version information. */
 extern const char *ttversion;
