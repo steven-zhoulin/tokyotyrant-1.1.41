@@ -422,7 +422,7 @@ bool ttgethostaddr(const char *name, char *addr){
     freeaddrinfo(result);
     return false;
   }
-  if(result->ai_addr->sa_family != AF_INET || result->ai_addr->sa_family != AF_INET6){
+  if(result->ai_addr->sa_family != AF_INET && result->ai_addr->sa_family != AF_INET6){
     freeaddrinfo(result);
     return false;
   }
