@@ -407,7 +407,7 @@ bool ttgethostaddr(const char *name, char *addr){
   assert(name && addr);
   struct addrinfo hints, *result;
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;
+  hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = 0;
   hints.ai_protocol = IPPROTO_TCP;
@@ -422,7 +422,7 @@ bool ttgethostaddr(const char *name, char *addr){
     freeaddrinfo(result);
     return false;
   }
-  if(result->ai_addr->sa_family != AF_INET){
+  if(result->ai_addr->sa_family != AF_INET || result->ai_addr->sa_family != AF_INET6){
     freeaddrinfo(result);
     return false;
   }
