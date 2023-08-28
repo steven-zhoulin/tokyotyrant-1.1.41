@@ -46,8 +46,8 @@ make install
 export TC_HOME=${HOME}/support/tc
 export TT_HOME=${HOME}/support/tt
 
-${TT_HOME}/bin/ttserver -host 0.0.0.0 -port 11211 -thnum 8 -dmn -pid $HOME/logs/ttserver.pid -Z $HOME/etc/acl.conf\
--log $HOME/logs/ttserver.log -le -ulog $HOME/logs -ulim 128m -sid 1 \
+${TT_HOME}/bin/ttserver -host fd15:4ba5:5a2b:1008:1f9c:982e:3b68:a128 -port 11211 -thnum 8 -dmn -pid $HOME/logs/ttserver.pid -Z $HOME/etc/acl.conf \
+-log $HOME/logs/ttserver.log -ld -ulog $HOME/logs -ulim 128m -sid 1 -mhost fd15:4ba5:5a2b:1008:1f9c:982e:3b68:a129 -mport 11211 \
 -rts $HOME/logs/ttserver.rts $HOME/data/database.tch
 ```
 
@@ -85,8 +85,8 @@ ipv6 rule: 0010010000001000 1000001000000111 0010010101010000 0100110000000000 0
 
 简单验证
 ```shell
-[tt@c7-n1 ~]$ curl -XPUT http://127.0.0.1:11211/k1 -d "v1"
+[cau@c7-base test]$ curl -XPUT http://fd15:4ba5:5a2b:1008:1f9c:982e:3b68:a128:11211/k1 -d "ChangSha"
 Created
-[tt@c7-n1 ~]$ curl -XGET http://127.0.0.1:11211/k1
-v1
+[cau@c7-base test]$ curl -XGET http://fd15:4ba5:5a2b:1008:1f9c:982e:3b68:a129:11211/k1 -w '\n'
+ChangSha
 ```
