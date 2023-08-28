@@ -444,6 +444,7 @@ int ttopensock(const char *addr, int port){
   sain.sin6_family = AF_INET6;
   sain.sin6_addr = in6addr_any;
   //if(inet_aton(addr, &sain.sin6_addr) == 0) return -1;
+  if (inet_pton(AF_INET6, addr, &sain.sin6_addr) == 0) return -1;
   uint16_t snum = port;
   sain.sin6_port = htons(snum);
   int fd = socket(AF_INET6, SOCK_STREAM, 0);
@@ -1423,6 +1424,7 @@ bool ttservstart(TTSERV *serv){
             cfd = -1;
           }
           if(cfd != -1){
+              // TODO: 这个地方的地址好像不是用的 -mhost 地址
             ttservlog(serv, TTLOGINFO, "connected: %s:%d", addr, port);
             struct epoll_event ev;
             memset(&ev, 0, sizeof(ev));
